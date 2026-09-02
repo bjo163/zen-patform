@@ -11,23 +11,29 @@ import va from "@vercel/analytics";
 export default function DeleteSiteForm({ siteName }: { siteName: string }) {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+
   return (
     <form
-      action={async (data: FormData) =>
-        window.confirm("Are you sure you want to delete your site?") &&
-        deleteSite(data, id, "delete")
-          .then(async (res) => {
-            if (res.error) {
-              toast.error(res.error);
-            } else {
-              va.track("Deleted Site");
-              router.refresh();
-              router.push("/sites");
-              toast.success(`Successfully deleted site!`);
-            }
-          })
-          .catch((err: Error) => toast.error(err.message))
-      }
+      action={async (data: FormData): Promise<void> => {
+        if (!window.confirm("Are you sure you want to delete your site?")) {
+          return;
+        }
+
+        try {
+          const res = await deleteSite(data, id, "delete");
+          if (res.error) {
+            toast.error(res.error);
+            return;
+          }
+
+          va.track("Deleted Site");
+          router.refresh();
+          router.push("/sites");
+          toast.success("Successfully deleted site!");
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Unable to delete site");
+        }
+      }}
       className="rounded-lg border border-red-600 bg-white dark:bg-black"
     >
       <div className="relative flex flex-col space-y-4 p-5 sm:p-10">
@@ -61,8 +67,10 @@ export default function DeleteSiteForm({ siteName }: { siteName: string }) {
 
 function FormButton() {
   const { pending } = useFormStatus();
+
   return (
     <button
+      type="submit"
       className={cn(
         "flex h-8 w-32 items-center justify-center space-x-2 rounded-md border text-sm transition-all focus:outline-none sm:h-10",
         pending
