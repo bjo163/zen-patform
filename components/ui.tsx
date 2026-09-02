@@ -1,4 +1,10 @@
-import { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  TextareaHTMLAttributes,
+} from "react";
 import { cn } from "@/lib/utils";
 
 export function cnx(...classes: Array<string | false | null | undefined>) {
@@ -9,7 +15,7 @@ export function Card({
   children,
   className,
   ...props
-}: { children: ReactNode; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
+}: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       {...props}
@@ -34,9 +40,12 @@ export function Button({
   size?: "sm" | "md";
 }) {
   const variants = {
-    primary: "border-black bg-black text-white hover:bg-stone-800 dark:border-white dark:bg-white dark:text-black dark:hover:bg-stone-200",
-    secondary: "border-stone-300 bg-white text-stone-900 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800",
-    ghost: "border-transparent bg-transparent text-stone-700 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800",
+    primary:
+      "border-black bg-black text-white hover:bg-stone-800 dark:border-white dark:bg-white dark:text-black dark:hover:bg-stone-200",
+    secondary:
+      "border-stone-300 bg-white text-stone-900 hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800",
+    ghost:
+      "border-transparent bg-transparent text-stone-700 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800",
     danger: "border-red-600 bg-red-600 text-white hover:bg-red-700",
   };
   const sizes = {
