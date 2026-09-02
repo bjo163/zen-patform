@@ -4,6 +4,8 @@ import db from "./db";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { Adapter } from "next-auth/adapters";
 import { accounts, sessions, users, verificationTokens } from "./schema";
+import { eq } from "drizzle-orm";
+import { getSupabaseClaims } from "./supabase/server";
 
 const VERCEL_DEPLOYMENT = !!process.env.VERCEL_URL;
 export const authOptions: NextAuthOptions = {
@@ -25,7 +27,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: `/login`,
     verifyRequest: `/login`,
-    error: "/login", // Error code passed in query string as ?error=
+    error: "/login",
   },
   adapter: DrizzleAdapter(db, {
     usersTable: users,
@@ -41,7 +43,6 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        // When working on localhost, the cookie domain must be omitted entirely (https://stackoverflow.com/a/1188145)
         domain: VERCEL_DEPLOYMENT
           ? `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
           : undefined,
@@ -51,9 +52,7 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     jwt: async ({ token, user }) => {
-      if (user) {
-        token.user = user;
-      }
+      if (user) token.user = user;
       return token;
     },
     session: async ({ session, token }) => {
@@ -69,16 +68,72 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-export function getSession() {
-  return getServerSession(authOptions) as Promise<{
+export type AppSession = {
+  user: {
+    id: string;
+    name: string;
+    username: string;
+    email: string;
+    image: string;
+  };
+};
+
+function normalizeUser(user: {
+  id: string;
+  name?: string | null;
+  username?: string | null;
+  gh_username?: string | null;
+  email?: string | null;
+  image?: string | null;
+}): AppSession {
+  return {
     user: {
-      id: string;
-      name: string;
-      username: string;
-      email: string;
-      image: string;
-    };
-  } | null>;
+      id: user.id,
+      name: user.name ?? user.username ?? user.gh_username ?? "User",
+      username: user.username ?? user.gh_username ?? "user",
+      email: user.email ?? "",
+      image: user.image ?? "",
+    },
+  };
+}
+
+export async function getSession(): Promise<AppSession | null> {
+  const nextAuthSession = await getServerSession(authOptions);
+  if (nextAuthSession?.user?.id) {
+    return normalizeUser({
+      id: nextAuthSession.user.id,
+      name: nextAuthSession.user.name,
+      email: nextAuthSession.user.email,
+      image: nextAuthSession.user.image,
+      username:
+        // @ts-expect-error NextAuth's custom session field is declared at runtime.
+        nextAuthSession.user.username,
+    });
+  }
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    return null;
+  }
+
+  const claims = await getSupabaseClaims();
+  const authUserId = typeof claims?.sub === "string" ? claims.sub : null;
+  if (!authUserId) return null;
+
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      username: users.username,
+      gh_username: users.gh_username,
+      email: users.email,
+      image: users.image,
+    })
+    .from(users)
+    .where(eq(users.authUserId, authUserId))
+    .limit(1);
+
+  const user = rows[0];
+  return user ? normalizeUser(user) : null;
 }
 
 export function withSiteAuth(action: any) {
@@ -89,9 +144,7 @@ export function withSiteAuth(action: any) {
   ) => {
     const session = await getSession();
     if (!session) {
-      return {
-        error: "Not authenticated",
-      };
+      return { error: "Not authenticated" };
     }
 
     const site = await db.query.sites.findFirst({
@@ -99,9 +152,7 @@ export function withSiteAuth(action: any) {
     });
 
     if (!site || site.userId !== session.user.id) {
-      return {
-        error: "Not authorized",
-      };
+      return { error: "Not authorized" };
     }
 
     return action(formData, site, key);
@@ -116,9 +167,7 @@ export function withPostAuth(action: any) {
   ) => {
     const session = await getSession();
     if (!session?.user.id) {
-      return {
-        error: "Not authenticated",
-      };
+      return { error: "Not authenticated" };
     }
 
     const post = await db.query.posts.findFirst({
@@ -129,9 +178,7 @@ export function withPostAuth(action: any) {
     });
 
     if (!post || post.userId !== session.user.id) {
-      return {
-        error: "Post not found",
-      };
+      return { error: "Post not found" };
     }
 
     return action(formData, post, key);
