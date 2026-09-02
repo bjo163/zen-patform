@@ -6,12 +6,10 @@ import {
   BarChart3,
   Cloud,
   Edit3,
-  FileCode,
   Github,
   Globe,
   LayoutDashboard,
   Menu,
-  Megaphone,
   Newspaper,
   Settings,
   X,
@@ -26,9 +24,7 @@ import { getSiteFromPostId } from "@/lib/actions";
 import Image from "next/image";
 
 const externalLinks = [
-  { name: "Announcement", href: "https://vercel.com/blog/platforms-starter-kit", icon: <Megaphone width={18} /> },
   { name: "GitHub", href: "https://github.com/bjo163/zen-patform", icon: <Github width={18} /> },
-  { name: "Guide", href: "https://vercel.com/guides/nextjs-multi-tenant-application", icon: <FileCode width={18} /> },
 ];
 
 export default function Nav({ children }: { children: ReactNode }) {
@@ -40,7 +36,9 @@ export default function Nav({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (segments[0] === "post" && id) {
-      getSiteFromPostId(id).then((value) => setSiteId(value));
+      void getSiteFromPostId(id).then((value) => setSiteId(value ?? null));
+    } else {
+      setSiteId(null);
     }
   }, [segments, id]);
 
