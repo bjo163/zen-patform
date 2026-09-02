@@ -7,10 +7,13 @@ const schema = { ...legacySchema, ...cloudSchema };
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : undefined,
 });
 
-const db = drizzle(pool, { schema, logger: true });
+export const db = drizzle(pool, { schema, logger: true });
+export type DrizzleClient = typeof db;
 
 export default db;
-export type DrizzleClient = typeof db;
