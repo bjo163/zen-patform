@@ -1,11 +1,16 @@
-import { sql } from "@vercel/postgres";
-import { drizzle } from "drizzle-orm/vercel-postgres";
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
 import * as legacySchema from "./schema";
 import * as cloudSchema from "./cloud/schema";
 
 const schema = { ...legacySchema, ...cloudSchema };
-const db = drizzle(sql, { schema, logger: true });
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+});
+
+const db = drizzle(pool, { schema, logger: true });
 
 export default db;
-
 export type DrizzleClient = typeof db;
