@@ -11,21 +11,25 @@ import va from "@vercel/analytics";
 export default function DeletePostForm({ postName }: { postName: string }) {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+
   return (
     <form
-      action={async (data: FormData) =>
-        window.confirm("Are you sure you want to delete your post?") &&
-        deletePost(data, id, "delete").then((res) => {
-          if (res.error) {
-            toast.error(res.error);
-          } else {
-            va.track("Deleted Post");
-            router.refresh();
-            router.push(`/site/${res.siteId}`);
-            toast.success(`Successfully deleted post!`);
-          }
-        })
-      }
+      action={async (data: FormData): Promise<void> => {
+        if (!window.confirm("Are you sure you want to delete your post?")) {
+          return;
+        }
+
+        const res = await deletePost(data, id, "delete");
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+
+        va.track("Deleted Post");
+        router.refresh();
+        router.push(`/site/${res.siteId}`);
+        toast.success("Successfully deleted post!");
+      }}
       className="rounded-lg border border-red-600 bg-white dark:bg-black"
     >
       <div className="relative flex flex-col space-y-4 p-5 sm:p-10">
@@ -59,8 +63,10 @@ export default function DeletePostForm({ postName }: { postName: string }) {
 
 function FormButton() {
   const { pending } = useFormStatus();
+
   return (
     <button
+      type="submit"
       className={cn(
         "flex h-8 w-32 items-center justify-center space-x-2 rounded-md border text-sm transition-all focus:outline-none sm:h-10",
         pending
