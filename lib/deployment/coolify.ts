@@ -8,17 +8,20 @@ import type {
 interface CoolifyConfig {
   baseUrl: string;
   apiToken: string;
-  destinationId?: string;
-  serverUuid?: string;
+  projectUuid: string;
+  environmentUuid: string;
+  serverUuid: string;
+  destinationUuid?: string;
 }
 
 interface CoolifyResponse {
   uuid?: string;
-  id?: string;
+  deployment_uuid?: string;
   status?: string;
   deployment_url?: string;
   fqdn?: string;
   message?: string;
+  logs?: string;
 }
 
 export class CoolifyProvider implements DeploymentProvider {
@@ -60,29 +63,22 @@ export class CoolifyProvider implements DeploymentProvider {
   }
 
   async createProject(input: DeploymentProjectInput): Promise<DeploymentProject> {
-    if (!this.config.destinationId && !this.config.serverUuid) {
-      throw new Error("Coolify requires DESTINATION_ID or SERVER_UUID");
-    }
-
     const payload = {
-      project_name: input.name,
-      repository: input.repositoryUrl,
+      project_uuid: this.config.projectUuid,
+      server_uuid: this.config.serverUuid,
+      environment_uuid: this.config.environmentUuid,
+      git_repository: input.repositoryUrl,
       git_branch: input.branch,
       build_pack: "nixpacks",
+      ports_exposes: input.port ? String(input.port) : "3000",
+      destination_uuid: this.config.destinationUuid,
+      name: input.name,
+      install_command: input.installCommand,
       build_command: input.buildCommand,
       start_command: input.startCommand,
-      install_command: input.installCommand,
-      ports_exposes: input.port ? String(input.port) : undefined,
-      destination_uuid: this.config.destinationId,
-      server_uuid: this.config.serverUuid,
-      environment_variables: input.environment
-        ? Object.entries(input.environment).map(([key, value]) => ({
-            key,
-            value,
-            is_preview: false,
-            is_build_time: false,
-          }))
-        : undefined,
+      is_auto_deploy_enabled: false,
+      autogenerate_domain: true,
+      instant_deploy: false,
     };
 
     const result = await this.request<CoolifyResponse>(
@@ -90,8 +86,10 @@ export class CoolifyProvider implements DeploymentProvider {
       { method: "POST", body: JSON.stringify(payload) },
     );
 
-    const providerProjectId = result.uuid ?? result.id;
-    if (!providerProjectId) throw new Error("Coolify did not return an application id");
+    const providerProjectId = result.uuid;
+    if (!providerProjectId) {
+      throw new Error("Coolify did not return an application UUID");
+    }
 
     return {
       providerProjectId,
@@ -101,12 +99,13 @@ export class CoolifyProvider implements DeploymentProvider {
 
   async deploy(providerProjectId: string): Promise<DeploymentResult> {
     const result = await this.request<CoolifyResponse>(
-      `/api/v1/deploy?uuid=${encodeURIComponent(providerProjectId)}`,
-      { method: "POST", body: JSON.stringify({ force_rebuild: false }) },
+      `/api/v1/applications/${encodeURIComponent(providerProjectId)}/start`,
+      { method: "GET" },
     );
 
+    const deploymentId = result.deployment_uuid ?? providerProjectId;
     return {
-      deploymentId: result.uuid ?? result.id ?? providerProjectId,
+      deploymentId,
       status: "queued",
       url: result.fqdn ?? result.deployment_url,
     };
@@ -119,11 +118,11 @@ export class CoolifyProvider implements DeploymentProvider {
 
     const raw = String(result.status ?? "queued").toLowerCase();
     const status =
-      raw.includes("running") || raw.includes("finished")
+      raw.includes("finish") || raw.includes("success") || raw === "running"
         ? "running"
         : raw.includes("fail") || raw.includes("error")
           ? "failed"
-          : raw.includes("building")
+          : raw.includes("build")
             ? "building"
             : raw.includes("deploy")
               ? "deploying"
@@ -137,31 +136,30 @@ export class CoolifyProvider implements DeploymentProvider {
   }
 
   async getLogs(deploymentId: string): Promise<string> {
-    const result = await this.request<unknown>(
-      `/api/v1/deployments/${encodeURIComponent(deploymentId)}/logs`,
+    const result = await this.request<CoolifyResponse>(
+      `/api/v1/deployments/${encodeURIComponent(deploymentId)}`,
     );
-    return typeof result === "string" ? result : JSON.stringify(result, null, 2);
+    return result.logs ?? "";
   }
 
   async createDomain(providerProjectId: string, domain: string): Promise<void> {
-    await this.request(`/api/v1/applications/${encodeURIComponent(providerProjectId)}/domains`, {
-      method: "POST",
-      body: JSON.stringify({ domain }),
-    });
+    await this.request(
+      `/api/v1/applications/${encodeURIComponent(providerProjectId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ domains: domain }),
+      },
+    );
   }
 
   async restart(providerProjectId: string): Promise<void> {
     await this.request(`/api/v1/applications/${encodeURIComponent(providerProjectId)}/restart`, {
-      method: "POST",
-      body: JSON.stringify({}),
+      method: "GET",
     });
   }
 
-  async rollback(providerProjectId: string, deploymentId: string): Promise<void> {
-    await this.request(`/api/v1/applications/${encodeURIComponent(providerProjectId)}/rollback`, {
-      method: "POST",
-      body: JSON.stringify({ deployment_uuid: deploymentId }),
-    });
+  async rollback(_providerProjectId: string, _deploymentId: string): Promise<void> {
+    throw new Error("Coolify rollback contract requires selecting a deployment through the deployments API; not wired in MVP");
   }
 
   async deleteProject(providerProjectId: string): Promise<void> {
