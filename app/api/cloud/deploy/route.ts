@@ -10,6 +10,10 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
+  let projectId: string | undefined;
+  let environmentId: string | undefined;
+  let providerProjectId: string | undefined;
+
   try {
     const body = await request.json();
     const name = String(body.name ?? "").trim();
@@ -23,7 +27,9 @@ export async function POST(request: Request) {
 
     const organization = organizationId
       ? await requireOrganizationMember(session.user.id, organizationId).then(async () => {
-          const found = await db.query.cloudOrganizations.findFirst({ where: (org, { eq: equal }) => equal(org.id, organizationId) });
+          const found = await db.query.cloudOrganizations.findFirst({
+            where: (org, { eq: equal }) => equal(org.id, organizationId),
+          });
           if (!found) throw new Error("Organization not found");
           return found;
         })
@@ -43,14 +49,17 @@ export async function POST(request: Request) {
       defaultBranch: branch,
       provider: "coolify",
     }).returning();
+    projectId = project.id;
 
     const [environment] = await db.insert(cloudEnvironments).values({
       projectId: project.id,
       name: "production",
     }).returning();
+    environmentId = environment.id;
 
     const provider = getDeploymentProvider();
     const created = await provider.createProject({ name, repositoryUrl, branch });
+    providerProjectId = created.providerProjectId;
     const deployment = await provider.deploy(created.providerProjectId);
 
     await db.update(cloudProjects)
@@ -66,9 +75,25 @@ export async function POST(request: Request) {
       url: deployment.url,
     }).returning();
 
-    return NextResponse.json({ project, environment, deployment: record }, { status: 201 });
+    return NextResponse.json({ project: { ...project, providerProjectId: created.providerProjectId }, environment, deployment: record }, { status: 201 });
   } catch (error) {
     console.error("cloud deploy error", error);
+
+    try {
+      if (providerProjectId) {
+        await getDeploymentProvider().deleteProject(providerProjectId);
+      }
+    } catch (cleanupError) {
+      console.error("cloud deploy provider cleanup error", cleanupError);
+    }
+
+    try {
+      if (environmentId) await db.delete(cloudEnvironments).where(eq(cloudEnvironments.id, environmentId));
+      if (projectId) await db.delete(cloudProjects).where(eq(cloudProjects.id, projectId));
+    } catch (cleanupError) {
+      console.error("cloud deploy database cleanup error", cleanupError);
+    }
+
     return NextResponse.json({ error: error instanceof Error ? error.message : "Deployment failed" }, { status: 500 });
   }
 }
