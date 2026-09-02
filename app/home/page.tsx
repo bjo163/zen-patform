@@ -1,18 +1,21 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, Code2, GitBranch, Rocket, Server, ShieldCheck, Zap } from "lucide-react";
 import { getCloudPlans } from "@/lib/cloud/plans";
 
+const platformFeatures = [
+  { icon: Rocket, title: "Fast deploy flow", text: "Repository → deployment → status, with the lifecycle visible from one dashboard." },
+  { icon: Code2, title: "Developer-friendly", text: "Simple project setup, predictable resources, custom domains, and deployment logs." },
+  { icon: Server, title: "Resource-aware", text: "Plans are backed by database-defined CPU, memory, storage, and project limits." },
+  { icon: Check, title: "Clear by default", text: "Pricing and included resources come from the same catalog used by the product." },
+];
+
 function formatIdr(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
 
 function formatMemory(value: number) {
-  if (value >= 1024) return `${value / 1024} GB`;
-  return `${value} MB`;
+  return value >= 1024 ? `${value / 1024} GB` : `${value} MB`;
 }
 
 export default async function HomePage() {
@@ -23,134 +26,25 @@ export default async function HomePage() {
       <nav className="border-b border-stone-200/80 bg-white/90 backdrop-blur dark:border-stone-800/80 dark:bg-black/90">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/" className="flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500">
-            <img src="/logo.png" alt="Zen Platform" className="h-8 w-8 rounded-lg object-cover" />
-            <div>
-              <div className="text-sm font-bold tracking-tight">Zen Platform</div>
-              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500">Developer Cloud</div>
-            </div>
+            <Image src="/logo.png" alt="Zen Platform" width={32} height={32} className="rounded-lg object-cover" />
+            <div><div className="text-sm font-bold tracking-tight">Zen Platform</div><div className="text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500">Developer Cloud</div></div>
           </Link>
-          <div className="flex items-center gap-2">
-            <a href="#pricing" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:text-stone-300 dark:hover:bg-stone-900 dark:hover:text-white sm:inline-flex">Pricing</a>
-            <Link href="/login" className="inline-flex h-9 items-center justify-center rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:bg-white dark:text-black dark:hover:bg-stone-200">Sign in</Link>
-          </div>
+          <div className="flex items-center gap-2"><a href="#pricing" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:text-stone-300 dark:hover:bg-stone-900 dark:hover:text-white sm:inline-flex">Pricing</a><Link href="/login" className="inline-flex h-9 items-center justify-center rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:bg-white dark:text-black dark:hover:bg-stone-200">Sign in</Link></div>
         </div>
       </nav>
 
-      <section className="relative border-b border-stone-200 dark:border-stone-800">
-        <div className="mx-auto max-w-7xl px-5 pb-20 pt-20 sm:px-8 sm:pb-28 sm:pt-28 lg:pt-32">
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-600 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-300">
-              <Zap className="h-3.5 w-3.5" aria-hidden="true" />
-              Indonesia-first Developer Cloud
-            </div>
-            <h1 className="mt-7 max-w-4xl text-5xl font-black tracking-[-0.04em] sm:text-6xl lg:text-7xl">Ship your app. <span className="text-stone-400 dark:text-stone-600">Skip the server work.</span></h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-stone-600 dark:text-stone-400 sm:text-lg">Connect GitHub, deploy through a managed control plane, and keep your projects, environments, domains, and deployments in one place.</p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="/login" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-stone-950 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:bg-white dark:text-black dark:hover:bg-stone-200">Start deploying <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
-              <a href="#pricing" className="inline-flex h-11 items-center justify-center rounded-xl border border-stone-300 px-5 text-sm font-semibold text-stone-800 transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-950">View pricing</a>
-            </div>
-          </div>
-
-          <div className="mt-16 grid gap-4 md:grid-cols-3">
-            {[
-              { icon: GitBranch, title: "Git-first", text: "Deploy directly from your repository and keep the workflow familiar." },
-              { icon: Server, title: "Managed runtime", text: "The control plane handles the deployment lifecycle while your app runs on managed infrastructure." },
-              { icon: ShieldCheck, title: "One control plane", text: "Projects, deployment status, domains, and logs stay together in one workspace." },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.title} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-5 dark:border-stone-800 dark:bg-stone-950/70">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                  <h2 className="mt-4 text-sm font-bold">{item.title}</h2>
-                  <p className="mt-1.5 text-sm leading-6 text-stone-500 dark:text-stone-400">{item.text}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       <section className="border-b border-stone-200 dark:border-stone-800">
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20">
-          <div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Built for shipping</div>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">The boring infrastructure, handled.</h2>
-              <p className="mt-4 max-w-md text-sm leading-6 text-stone-500 dark:text-stone-400">Zen Platform is the control plane between your code and managed application infrastructure. You get a simple developer workflow without turning every deploy into a server project.</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                [Rocket, "Fast deploy flow", "Repository → deployment → status, with the lifecycle visible from one dashboard."],
-                [Code2, "Developer-friendly", "Simple project setup, predictable resources, custom domains, and deployment logs."],
-                [Server, "Resource-aware", "Plans are backed by database-defined CPU, memory, storage, and project limits."],
-                [Check, "Clear by default", "Pricing and included resources come from the same catalog used by the product."],
-              ].map(([icon, title, text]) => {
-                const Icon = icon as typeof Rocket;
-                return (
-                  <div key={title as string} className="rounded-2xl border border-stone-200 p-5 dark:border-stone-800">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                    <h3 className="mt-4 text-sm font-bold">{title as string}</h3>
-                    <p className="mt-1.5 text-sm leading-6 text-stone-500 dark:text-stone-400">{text as string}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+        <div className="mx-auto max-w-7xl px-5 pb-20 pt-20 sm:px-8 sm:pb-28 sm:pt-28 lg:pt-32">
+          <div className="max-w-4xl"><div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-600 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-300"><Zap className="h-3.5 w-3.5" aria-hidden="true" /> Indonesia-first Developer Cloud</div><h1 className="mt-7 max-w-4xl text-5xl font-black tracking-[-0.04em] sm:text-6xl lg:text-7xl">Ship your app. <span className="text-stone-400 dark:text-stone-600">Skip the server work.</span></h1><p className="mt-6 max-w-2xl text-base leading-7 text-stone-600 dark:text-stone-400 sm:text-lg">Connect GitHub, deploy through a managed control plane, and keep your projects, environments, domains, and deployments in one place.</p><div className="mt-9 flex flex-col gap-3 sm:flex-row"><Link href="/login" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-stone-950 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:bg-white dark:text-black dark:hover:bg-stone-200">Start deploying <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link><a href="#pricing" className="inline-flex h-11 items-center justify-center rounded-xl border border-stone-300 px-5 text-sm font-semibold text-stone-800 transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-950">View pricing</a></div></div>
+          <div className="mt-16 grid gap-4 md:grid-cols-3">{[{ icon: GitBranch, title: "Git-first", text: "Deploy directly from your repository and keep the workflow familiar." }, { icon: Server, title: "Managed runtime", text: "The control plane handles the deployment lifecycle while your app runs on managed infrastructure." }, { icon: ShieldCheck, title: "One control plane", text: "Projects, deployment status, domains, and logs stay together in one workspace." }].map((item) => { const Icon = item.icon; return <div key={item.title} className="rounded-2xl border border-stone-200 bg-stone-50/70 p-5 dark:border-stone-800 dark:bg-stone-950/70"><Icon className="h-5 w-5" aria-hidden="true" /><h2 className="mt-4 text-sm font-bold">{item.title}</h2><p className="mt-1.5 text-sm leading-6 text-stone-500 dark:text-stone-400">{item.text}</p></div>; })}</div>
         </div>
       </section>
 
-      <section id="pricing" className="border-b border-stone-200 dark:border-stone-800">
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20">
-          <div className="max-w-2xl">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Pricing</div>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Plans that match the infrastructure.</h2>
-            <p className="mt-4 text-sm leading-6 text-stone-500 dark:text-stone-400">Every price and resource limit below is loaded from the cloud plan catalog in the database, so the marketing page and control plane stay in sync.</p>
-          </div>
+      <section className="border-b border-stone-200 dark:border-stone-800"><div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20"><div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-start"><div><div className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Built for shipping</div><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">The boring infrastructure, handled.</h2><p className="mt-4 max-w-md text-sm leading-6 text-stone-500 dark:text-stone-400">Zen Platform is the control plane between your code and managed application infrastructure. You get a simple developer workflow without turning every deploy into a server project.</p></div><div className="grid gap-4 sm:grid-cols-2">{platformFeatures.map((item) => { const Icon = item.icon; return <div key={item.title} className="rounded-2xl border border-stone-200 p-5 dark:border-stone-800"><Icon className="h-5 w-5" aria-hidden="true" /><h3 className="mt-4 text-sm font-bold">{item.title}</h3><p className="mt-1.5 text-sm leading-6 text-stone-500 dark:text-stone-400">{item.text}</p></div>; })}</div></div></div></section>
 
-          {plans.length ? (
-            <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {plans.map((plan, index) => (
-                <article key={plan.id} className={`rounded-3xl border p-6 sm:p-7 ${index === 0 ? "border-stone-950 bg-stone-950 text-white dark:border-white dark:bg-white dark:text-black" : "border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-950"}`}>
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-lg font-bold">{plan.name}</h3>
-                    {index === 0 ? <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] dark:bg-black/10">Available now</span> : null}
-                  </div>
-                  <div className="mt-6 flex items-end gap-1.5">
-                    <span className="text-4xl font-black tracking-tight">{plan.priceIdr === 0 ? "Free" : formatIdr(plan.priceIdr)}</span>
-                    {plan.priceIdr > 0 ? <span className={`pb-1.5 text-xs ${index === 0 ? "text-white/60 dark:text-black/60" : "text-stone-500"}`}>/ bulan</span> : null}
-                  </div>
-                  <div className={`mt-6 space-y-3 border-t pt-5 text-sm ${index === 0 ? "border-white/15 dark:border-black/15" : "border-stone-200 dark:border-stone-800"}`}>
-                    <div className="flex items-center justify-between gap-4"><span className="text-stone-500">Projects</span><span className="font-semibold">{plan.projectLimit}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-stone-500">CPU</span><span className="font-semibold">{plan.cpuMillicores >= 1000 ? `${plan.cpuMillicores / 1000} vCPU` : `${plan.cpuMillicores} mCPU`}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-stone-500">RAM</span><span className="font-semibold">{formatMemory(plan.memoryMb)}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-stone-500">Storage</span><span className="font-semibold">{plan.storageGb} GB</span></div>
-                  </div>
-                  <Link href="/login" className={`mt-7 inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 ${index === 0 ? "bg-white text-black hover:bg-stone-200 dark:bg-black dark:text-white dark:hover:bg-stone-800" : "bg-stone-950 text-white hover:bg-stone-800 dark:bg-white dark:text-black dark:hover:bg-stone-200"}`}>{plan.priceIdr === 0 ? "Get started" : "Choose plan"}</Link>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-10 rounded-2xl border border-dashed border-stone-300 p-8 text-sm text-stone-500 dark:border-stone-700">Plans are being configured. Pricing will appear here automatically when the cloud catalog is published.</div>
-          )}
-        </div>
-      </section>
+      <section id="pricing" className="border-b border-stone-200 dark:border-stone-800"><div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20"><div className="max-w-2xl"><div className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Pricing</div><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Plans that match the infrastructure.</h2><p className="mt-4 text-sm leading-6 text-stone-500 dark:text-stone-400">Every price and resource limit below is loaded from the cloud plan catalog in the database, so the marketing page and control plane stay in sync.</p></div>{plans.length ? <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{plans.map((plan, index) => <article key={plan.id} className={`rounded-3xl border p-6 sm:p-7 ${index === 0 ? "border-stone-950 bg-stone-950 text-white dark:border-white dark:bg-white dark:text-black" : "border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-950"}`}><div className="flex items-center justify-between gap-4"><h3 className="text-lg font-bold">{plan.name}</h3>{index === 0 ? <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] dark:bg-black/10">Available now</span> : null}</div><div className="mt-6 flex items-end gap-1.5"><span className="text-4xl font-black tracking-tight">{plan.priceIdr === 0 ? "Free" : formatIdr(plan.priceIdr)}</span>{plan.priceIdr > 0 ? <span className={`pb-1.5 text-xs ${index === 0 ? "text-white/60 dark:text-black/60" : "text-stone-500"}`}>/ bulan</span> : null}</div><div className={`mt-6 space-y-3 border-t pt-5 text-sm ${index === 0 ? "border-white/15 dark:border-black/15" : "border-stone-200 dark:border-stone-800"}`}><div className="flex items-center justify-between gap-4"><span className="text-stone-500">Projects</span><span className="font-semibold">{plan.projectLimit}</span></div><div className="flex items-center justify-between gap-4"><span className="text-stone-500">CPU</span><span className="font-semibold">{plan.cpuMillicores >= 1000 ? `${plan.cpuMillicores / 1000} vCPU` : `${plan.cpuMillicores} mCPU`}</span></div><div className="flex items-center justify-between gap-4"><span className="text-stone-500">RAM</span><span className="font-semibold">{formatMemory(plan.memoryMb)}</span></div><div className="flex items-center justify-between gap-4"><span className="text-stone-500">Storage</span><span className="font-semibold">{plan.storageGb} GB</span></div></div><Link href="/login" className={`mt-7 inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 ${index === 0 ? "bg-white text-black hover:bg-stone-200 dark:bg-black dark:text-white dark:hover:bg-stone-800" : "bg-stone-950 text-white hover:bg-stone-800 dark:bg-white dark:text-black dark:hover:bg-stone-200"}`}>{plan.priceIdr === 0 ? "Get started" : "Choose plan"}</Link></article>)}</div> : <div className="mt-10 rounded-2xl border border-dashed border-stone-300 p-8 text-sm text-stone-500 dark:border-stone-700">Plans are being configured. Pricing will appear here automatically when the cloud catalog is published.</div>}</div></section>
 
-      <section>
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20">
-          <div className="rounded-3xl bg-stone-950 px-6 py-10 text-white dark:bg-white dark:text-black sm:px-10 sm:py-12">
-            <div className="max-w-2xl">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] opacity-60">Ready to ship</div>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Your next deploy should be the easy part.</h2>
-              <p className="mt-4 text-sm leading-6 opacity-70">Create a workspace, connect a repository, and manage your application from the Zen Platform control plane.</p>
-              <Link href="/login" className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-black hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 dark:bg-black dark:text-white dark:hover:bg-stone-800">Open Developer Cloud <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
-            </div>
-          </div>
-          <footer className="flex flex-col gap-3 border-t border-stone-200 pt-8 text-xs text-stone-500 dark:border-stone-800 sm:flex-row sm:items-center sm:justify-between">
-            <span>Zen Platform · Developer Cloud</span>
-            <span>Built for developers, agencies, and startups.</span>
-          </footer>
-        </div>
-      </section>
+      <section><div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20"><div className="rounded-3xl bg-stone-950 px-6 py-10 text-white dark:bg-white dark:text-black sm:px-10 sm:py-12"><div className="max-w-2xl"><div className="text-xs font-semibold uppercase tracking-[0.18em] opacity-60">Ready to ship</div><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Your next deploy should be the easy part.</h2><p className="mt-4 text-sm leading-6 opacity-70">Create a workspace, connect a repository, and manage your application from the Zen Platform control plane.</p><Link href="/login" className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-black hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 dark:bg-black dark:text-white dark:hover:bg-stone-800">Open Developer Cloud <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></div></div><footer className="flex flex-col gap-3 border-t border-stone-200 pt-8 text-xs text-stone-500 dark:border-stone-800 sm:flex-row sm:items-center sm:justify-between"><span>Zen Platform · Developer Cloud</span><span>Built for developers, agencies, and startups.</span></footer></div></section>
     </main>
   );
 }
