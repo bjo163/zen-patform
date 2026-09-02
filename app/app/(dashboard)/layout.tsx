@@ -4,13 +4,13 @@ import Nav from "@/components/nav";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div>
+    <div className="min-h-screen bg-white text-stone-950 dark:bg-black dark:text-white">
       <Nav>
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="px-3 py-2 text-xs text-stone-500">Loading profile…</div>}>
           <Profile />
         </Suspense>
       </Nav>
-      <div className="min-h-screen sm:pl-60 dark:bg-black">{children}</div>
+      <div className="min-h-screen sm:pl-60">{children}</div>
     </div>
   );
 }
