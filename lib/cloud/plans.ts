@@ -1,5 +1,3 @@
-import "server-only";
-
 import { asc, eq } from "drizzle-orm";
 import db from "@/lib/db";
 import { cloudPlans } from "@/lib/cloud/schema";
