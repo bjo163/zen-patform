@@ -2,9 +2,11 @@
 
 import { truncate } from "@/lib/utils";
 import { ImageResponse } from "next/og";
-import { sql } from "@vercel/postgres";
+import { and, eq, or } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { posts, sites, users } from "@/lib/all-schema";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export default async function PostOG({
   params,
@@ -14,25 +16,31 @@ export default async function PostOG({
   const domain = decodeURIComponent(params.domain);
   const slug = decodeURIComponent(params.slug);
 
-  const subdomain = domain.endsWith(`.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`)
-    ? domain.replace(`.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`, "")
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+  const subdomain = rootDomain && domain.endsWith(`.${rootDomain}`)
+    ? domain.replace(`.${rootDomain}`, "")
     : null;
 
-  const response = await sql`
-  SELECT post.title, post.description, post.image, "user".name as "authorName", "user".image as "authorImage"
-  FROM "Post" AS post 
-  INNER JOIN "Site" AS site ON post."siteId" = site.id 
-  INNER JOIN "User" AS "user" ON site."userId" = "user".id 
-  WHERE 
-    (
-        site.subdomain = ${subdomain}
-        OR site."customDomain" = ${domain}
+  const rows = await db
+    .select({
+      title: posts.title,
+      description: posts.description,
+      image: posts.image,
+      authorName: users.name,
+      authorImage: users.image,
+    })
+    .from(posts)
+    .innerJoin(sites, eq(posts.siteId, sites.id))
+    .innerJoin(users, eq(sites.userId, users.id))
+    .where(
+      and(
+        or(eq(sites.subdomain, subdomain ?? ""), eq(sites.customDomain, domain)),
+        eq(posts.slug, slug),
+      ),
     )
-    AND post.slug = ${slug}
-  LIMIT 1;
-`;
+    .limit(1);
 
-  const data = response.rows[0];
+  const data = rows[0];
 
   if (!data) {
     return new Response("Not found", { status: 404 });
@@ -50,21 +58,27 @@ export default async function PostOG({
             {data.title}
           </h1>
           <p tw="mt-4 text-xl text-gray-600 max-w-xl text-center">
-            {truncate(data.description, 120)}
+            {truncate(data.description ?? "", 120)}
           </p>
           <div tw="flex items-center justify-center">
-            <img
-              tw="w-12 h-12 rounded-full mr-4"
-              src={data.authorImage}
-              alt={data.authorName}
-            />
-            <p tw="text-xl font-medium text-gray-900">by {data.authorName}</p>
+            {data.authorImage ? (
+              <img
+                tw="w-12 h-12 rounded-full mr-4"
+                src={data.authorImage}
+                alt={data.authorName ?? "Author"}
+              />
+            ) : null}
+            <p tw="text-xl font-medium text-gray-900">
+              by {data.authorName ?? "Author"}
+            </p>
           </div>
-          <img
-            tw="mt-4 w-5/6 rounded-2xl border border-gray-200 shadow-md"
-            src={data.image}
-            alt={data.title}
-          />
+          {data.image ? (
+            <img
+              tw="mt-4 w-5/6 rounded-2xl border border-gray-200 shadow-md"
+              src={data.image}
+              alt={data.title ?? "Post"}
+            />
+          ) : null}
         </div>
       </div>
     ),
