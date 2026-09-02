@@ -4,17 +4,17 @@ import Link from "next/link";
 import {
   ArrowLeft,
   BarChart3,
-  Edit3,
-  Globe,
-  Layout,
-  LayoutDashboard,
   Cloud,
-  Megaphone,
-  Menu,
-  Newspaper,
-  Settings,
+  Edit3,
   FileCode,
   Github,
+  Globe,
+  LayoutDashboard,
+  Menu,
+  Megaphone,
+  Newspaper,
+  Settings,
+  X,
 } from "lucide-react";
 import {
   useParams,
@@ -26,38 +26,34 @@ import { getSiteFromPostId } from "@/lib/actions";
 import Image from "next/image";
 
 const externalLinks = [
-  {
-    name: "Read announcement",
-    href: "https://vercel.com/blog/platforms-starter-kit",
-    icon: <Megaphone width={18} />,
-  },
-  {
-    name: "Star on GitHub",
-    href: "https://github.com/vercel/platforms",
-    icon: <Github width={18} />,
-  },
-  {
-    name: "Read the guide",
-    href: "https://vercel.com/guides/nextjs-multi-tenant-application",
-    icon: <FileCode width={18} />,
-  },
-  {
-    name: "View demo site",
-    href: "https://demo.vercel.pub",
-    icon: <Layout width={18} />,
-  },
+  { name: "Announcement", href: "https://vercel.com/blog/platforms-starter-kit", icon: <Megaphone width={18} /> },
+  { name: "GitHub", href: "https://github.com/bjo163/zen-patform", icon: <Github width={18} /> },
+  { name: "Guide", href: "https://vercel.com/guides/nextjs-multi-tenant-application", icon: <FileCode width={18} /> },
 ];
 
 export default function Nav({ children }: { children: ReactNode }) {
   const segments = useSelectedLayoutSegments();
   const { id } = useParams() as { id?: string };
-  const [siteId, setSiteId] = useState<string | null>();
+  const [siteId, setSiteId] = useState<string | null>(null);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (segments[0] === "post" && id) {
       getSiteFromPostId(id).then((value) => setSiteId(value));
     }
   }, [segments, id]);
+
+  useEffect(() => {
+    setShowSidebar(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = showSidebar ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showSidebar]);
 
   const tabs = useMemo(() => {
     if (segments[0] === "site" && id) {
@@ -83,48 +79,78 @@ export default function Nav({ children }: { children: ReactNode }) {
     ];
   }, [segments, id, siteId]);
 
-  const [showSidebar, setShowSidebar] = useState(false);
-  const pathname = usePathname();
-  useEffect(() => setShowSidebar(false), [pathname]);
-
   return (
     <>
       <button
-        className={`fixed z-20 ${segments[0] === "post" && segments.length === 2 && !showSidebar ? "left-5 top-5" : "right-5 top-7"} sm:hidden`}
-        onClick={() => setShowSidebar(!showSidebar)}
+        type="button"
+        aria-label={showSidebar ? "Close navigation" : "Open navigation"}
+        aria-expanded={showSidebar}
+        aria-controls="dashboard-sidebar"
+        className="fixed right-4 top-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 bg-white shadow-sm transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 dark:border-stone-700 dark:bg-black dark:hover:bg-stone-900 sm:hidden"
+        onClick={() => setShowSidebar((value) => !value)}
       >
-        <Menu width={20} />
+        {showSidebar ? <X width={19} /> : <Menu width={19} />}
       </button>
-      <div className={`transform ${showSidebar ? "w-full translate-x-0" : "-translate-x-full"} fixed z-10 flex h-full flex-col justify-between border-r border-stone-200 bg-stone-100 p-4 transition-all sm:w-60 sm:translate-x-0 dark:border-stone-700 dark:bg-stone-900`}>
-        <div className="grid gap-2">
-          <div className="flex items-center space-x-2 rounded-lg px-2 py-1.5">
-            <Link href="/" className="rounded-lg p-2 hover:bg-stone-200 dark:hover:bg-stone-700">
-              <Image src="/logo.png" width={24} height={24} alt="Logo" className="dark:scale-110 dark:rounded-full dark:border dark:border-stone-400" />
+
+      {showSidebar ? (
+        <button
+          type="button"
+          aria-label="Close navigation backdrop"
+          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[2px] sm:hidden"
+          onClick={() => setShowSidebar(false)}
+        />
+      ) : null}
+
+      <aside
+        id="dashboard-sidebar"
+        aria-label="Primary navigation"
+        className={`fixed inset-y-0 left-0 z-40 flex w-[18rem] flex-col justify-between border-r border-stone-200 bg-stone-50 p-4 shadow-xl transition-transform duration-200 dark:border-stone-800 dark:bg-stone-950 sm:w-60 sm:translate-x-0 sm:shadow-none ${showSidebar ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="grid gap-5">
+          <div className="flex items-center gap-2 rounded-xl px-2 py-1.5">
+            <Link href="/" aria-label="Go to overview" className="rounded-lg p-1.5 hover:bg-stone-200 dark:hover:bg-stone-800">
+              <Image src="/logo.png" width={26} height={26} alt="Developer Cloud" className="rounded-md" />
             </Link>
-            <span className="text-sm font-semibold">Developer Cloud</span>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-stone-900 dark:text-white">Developer Cloud</div>
+              <div className="text-[11px] text-stone-500">Control plane</div>
+            </div>
           </div>
-          <div className="grid gap-1">
+
+          <nav className="grid gap-1" aria-label="Workspace">
             {tabs.map(({ name, href, isActive, icon }) => (
-              <Link key={name} href={href} className={`flex items-center space-x-3 ${isActive ? "bg-stone-200 text-black dark:bg-stone-700" : ""} rounded-lg px-2 py-1.5 transition-all duration-150 ease-in-out hover:bg-stone-200 active:bg-stone-300 dark:text-white dark:hover:bg-stone-700 dark:active:bg-stone-800`}>
+              <Link
+                key={name}
+                href={href}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 ${isActive ? "bg-stone-200 text-stone-950 dark:bg-stone-800 dark:text-white" : "text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:text-stone-400 dark:hover:bg-stone-900 dark:hover:text-white"}`}
+              >
                 {icon}
-                <span className="text-sm font-medium">{name}</span>
+                <span>{name}</span>
               </Link>
             ))}
-          </div>
+          </nav>
         </div>
+
         <div>
           <div className="grid gap-1">
             {externalLinks.map(({ name, href, icon }) => (
-              <a key={name} href={href} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-all duration-150 ease-in-out hover:bg-stone-200 active:bg-stone-300 dark:text-white dark:hover:bg-stone-700 dark:active:bg-stone-800">
-                <div className="flex items-center space-x-3">{icon}<span className="text-sm font-medium">{name}</span></div>
-                <p>↗</p>
+              <a
+                key={name}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-10 items-center justify-between rounded-xl px-3 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 dark:text-stone-400 dark:hover:bg-stone-900 dark:hover:text-white"
+              >
+                <span className="flex items-center gap-3">{icon}<span>{name}</span></span>
+                <span aria-hidden="true" className="text-xs">↗</span>
               </a>
             ))}
           </div>
-          <div className="my-2 border-t border-stone-200 dark:border-stone-700" />
+          <div className="my-3 border-t border-stone-200 dark:border-stone-800" />
           {children}
         </div>
-      </div>
+      </aside>
     </>
   );
 }
