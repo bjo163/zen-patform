@@ -58,9 +58,9 @@ export const authOptions: NextAuthOptions = {
     session: async ({ session, token }) => {
       session.user = {
         ...session.user,
-        // @ts-expect-error
+        // @ts-expect-error NextAuth's user type does not include custom id.
         id: token.sub,
-        // @ts-expect-error
+        // @ts-expect-error NextAuth's user type does not include custom username.
         username: token?.user?.username || token?.user?.gh_username,
       };
       return session;
@@ -99,15 +99,16 @@ function normalizeUser(user: {
 
 export async function getSession(): Promise<AppSession | null> {
   const nextAuthSession = await getServerSession(authOptions);
-  if (nextAuthSession?.user?.id) {
+  const nextAuthUser = nextAuthSession?.user;
+  const nextAuthUserId = (nextAuthUser as typeof nextAuthUser & { id?: string })?.id;
+  if (nextAuthUserId) {
+    const nextAuthUsername = (nextAuthUser as typeof nextAuthUser & { username?: string | null })?.username;
     return normalizeUser({
-      id: nextAuthSession.user.id,
-      name: nextAuthSession.user.name,
-      email: nextAuthSession.user.email,
-      image: nextAuthSession.user.image,
-      username:
-        // @ts-expect-error NextAuth's custom session field is declared at runtime.
-        nextAuthSession.user.username,
+      id: nextAuthUserId,
+      name: nextAuthUser?.name,
+      email: nextAuthUser?.email,
+      image: nextAuthUser?.image,
+      username: nextAuthUsername,
     });
   }
 
