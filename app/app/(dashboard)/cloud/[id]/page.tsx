@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ExternalLink, FileText, Globe2, RefreshCw, RotateCcw, TerminalSquare } from "lucide-react";
 import { Button, Card, EmptyState, Field, Input, StatusBadge } from "@/components/ui";
 
@@ -31,20 +31,20 @@ export default function CloudProjectPage({ params }: { params: { id: string } })
   const [logs, setLogs] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     const response = await fetch("/api/cloud/projects", { cache: "no-store" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "Unable to load project");
     setProject((data.projects ?? []).find((item: Project) => item.id === params.id) ?? null);
     setLoading(false);
-  }
+  }, [params.id]);
 
   useEffect(() => {
     void load().catch((error) => {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to load project" });
       setLoading(false);
     });
-  }, [params.id]);
+  }, [load]);
 
   const latest = useMemo(() => project?.deployments?.[0], [project]);
 
