@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 interface Project {
@@ -8,7 +9,7 @@ interface Project {
   repositoryUrl: string | null;
   defaultBranch: string;
   provider: string;
-  deployments: Array<{ status: string; url: string | null }>;
+  deployments: Array<{ id: string; status: string; url: string | null }>;
 }
 
 export default function CloudPage() {
@@ -25,9 +26,35 @@ export default function CloudPage() {
     if (response.ok) setProjects(data.projects ?? []);
   }
 
+  async function refreshDeployments(currentProjects: Project[]) {
+    await Promise.all(
+      currentProjects.flatMap((project) => {
+        const latest = project.deployments?.[0];
+        if (!latest?.id || ["running", "failed", "cancelled"].includes(latest.status)) return [];
+        return [fetch(`/api/cloud/deployments/${latest.id}`, { cache: "no-store" }).catch(() => null)];
+      }),
+    );
+    await loadProjects();
+  }
+
   useEffect(() => {
-    void loadProjects();
-  }, []);
+    let active = true;
+    const boot = async () => {
+      const response = await fetch("/api/cloud/projects", { cache: "no-store" });
+      const data = await response.json();
+      if (active && response.ok) setProjects(data.projects ?? []);
+    };
+    void boot();
+    const timer = setInterval(() => {
+      if (active) void refreshDeployments(projects);
+    }, 8000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+    // Polling is intentionally low-frequency for the MVP control plane.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects.length]);
 
   async function deploy(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,6 +113,20 @@ export default function CloudPage() {
           </form>
         </section>
 
+        <section className="rounded-2xl border border-black/10 p-6 dark:border-white/10">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest opacity-50">Start selling</p>
+              <h2 className="text-2xl font-bold">Launch plan</h2>
+              <p className="mt-1 text-sm opacity-60">Simple starter offer for early customers. Billing hooks are ready to connect next.</p>
+            </div>
+            <div className="text-left sm:text-right">
+              <div className="text-2xl font-bold">Rp49k<span className="text-sm font-normal opacity-50"> / bulan</span></div>
+              <div className="text-xs opacity-50">1 project · 512 MB RAM · 5 GB storage</div>
+            </div>
+          </div>
+        </section>
+
         <section>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Projects</h2>
@@ -105,6 +146,7 @@ export default function CloudPage() {
                   </div>
                   <div className="mt-5 text-xs opacity-60">{project.defaultBranch} · {project.provider}</div>
                   {latest?.url ? <a href={latest.url} target="_blank" rel="noreferrer" className="mt-3 block truncate text-sm underline">{latest.url}</a> : null}
+                  <Link href={`/cloud/${project.id}`} className="mt-4 inline-block text-sm font-medium underline">Open project →</Link>
                 </article>
               );
             })}
