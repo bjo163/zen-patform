@@ -6,8 +6,20 @@ module.exports = {
     serverActions: {
       allowedOrigins: ["app.localhost:3000"],
     },
-    // Keep the native Node Postgres driver out of the browser/webpack bundle.
-    serverComponentsExternalPackages: ["pg"],
+    // Keep native Node database drivers out of Next's server component bundler.
+    serverComponentsExternalPackages: ["pg", "pg-native"],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [
+        ...(config.externals || []),
+        {
+          pg: "commonjs pg",
+          "pg-native": "commonjs pg-native",
+        },
+      ];
+    }
+    return config;
   },
   images: {
     remotePatterns: [
