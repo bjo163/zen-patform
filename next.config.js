@@ -6,6 +6,8 @@ module.exports = {
     serverActions: {
       allowedOrigins: ["app.localhost:3000"],
     },
+    // Keep the native Node Postgres driver out of the browser/webpack bundle.
+    serverComponentsExternalPackages: ["pg"],
   },
   images: {
     remotePatterns: [
