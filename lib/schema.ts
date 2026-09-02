@@ -16,41 +16,28 @@ import {
 export const users = pgTable(
   "users",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => createId()),
+    id: text("id").primaryKey().$defaultFn(() => createId()),
     authUserId: uuid("authUserId"),
     name: text("name"),
-    // if you are using Github OAuth, you can get rid of the username attribute (that is for Twitter OAuth)
     username: text("username"),
     gh_username: text("gh_username"),
     email: text("email").notNull().unique(),
     emailVerified: timestamp("emailVerified", { mode: "date" }),
     image: text("image"),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { mode: "date" })
-      .notNull()
-      .$onUpdate(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().$onUpdate(() => new Date()),
   },
-  (table) => ({
-    authUserIdKey: uniqueIndex().on(table.authUserId),
-  }),
+  (table) => ({ authUserIdKey: uniqueIndex().on(table.authUserId) }),
 );
 
 export const sessions = pgTable(
   "sessions",
   {
     sessionToken: text("sessionToken").primaryKey(),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
-  (table) => {
-    return {
-      userIdIdx: index().on(table.userId),
-    };
-  },
+  (table) => ({ userIdIdx: index().on(table.userId) }),
 );
 
 export const verificationTokens = pgTable(
@@ -60,11 +47,7 @@ export const verificationTokens = pgTable(
     token: text("token").notNull().unique(),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
-  (table) => {
-    return {
-      compositePk: primaryKey({ columns: [table.identifier, table.token] }),
-    };
-  },
+  (table) => ({ compositePk: primaryKey({ columns: [table.identifier, table.token] }) }),
 );
 
 export const examples = pgTable("examples", {
@@ -80,9 +63,7 @@ export const examples = pgTable("examples", {
 export const accounts = pgTable(
   "accounts",
   {
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
     type: text("type").notNull(),
     provider: text("provider").notNull(),
     providerAccountId: text("providerAccountId").notNull(),
@@ -97,94 +78,53 @@ export const accounts = pgTable(
     oauth_token_secret: text("oauth_token_secret"),
     oauth_token: text("oauth_token"),
   },
-  (table) => {
-    return {
-      userIdIdx: index().on(table.userId),
-      compositePk: primaryKey({
-        columns: [table.provider, table.providerAccountId],
-      }),
-    };
-  },
+  (table) => ({
+    userIdIdx: index().on(table.userId),
+    compositePk: primaryKey({ columns: [table.provider, table.providerAccountId] }),
+  }),
 );
 
 export const sites = pgTable(
   "sites",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => createId()),
+    id: text("id").primaryKey().$defaultFn(() => createId()),
     name: text("name"),
     description: text("description"),
-    logo: text("logo").default(
-      "https://public.blob.vercel-storage.com/eEZHAoPTOBSYGBE3/JRajRyC-PhBHEinQkupt02jqfKacBVHLWJq7Iy.png",
-    ),
+    logo: text("logo").default("https://public.blob.vercel-storage.com/eEZHAoPTOBSYGBE3/JRajRyC-PhBHEinQkupt02jqfKacBVHLWJq7Iy.png"),
     font: text("font").default("font-cal").notNull(),
-    image: text("image").default(
-      "https://public.blob.vercel-storage.com/eEZHAoPTOBSYGBE3/hxfcV5V-eInX3jbVUhjAt1suB7zB88uGd1j20b.png",
-    ),
-    imageBlurhash: text("imageBlurhash").default(
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAhCAYAAACbffiEAAAACXBIWXMAABYlAAAWJQFJUiTwAAABfUlEQVR4nN3XyZLDIAwE0Pz/v3q3r55JDlSBplsIEI49h76k4opexCK/juP4eXjOT149f2Tf9ySPgcjCc7kdpBTgDPKByKK2bTPFEdMO0RDrusJ0wLRBGCIuelmWJAjkgPGDSIQEMBDCfA2CEPM80+Qwl0JkNxBimiaYGOTUlXYI60YoehzHJDEm7kxjV3whOQTD3AaCuhGKHoYhyb+CBMwjIAFz647kTqyapdV4enGINuDJMSScPmijSwjCaHeLcT77C7EC0C1ugaCTi2HYfAZANgj6Z9A8xY5eiYghDMNQBJNCWhASot0jGsSCUiHWZcSGQjaWWCDaGMOWnsCcn2QhVkRuxqqNxMSdUSElCDbp1hbNOsa6Ugxh7xXauF4DyM1m5BLtCylBXgaxvPXVwEoOBjeIFVODtW74oj1yBQah3E8tyz3SkpolKS9Geo9YMD1QJR1Go4oJkgO1pgbNZq0AOUPChyjvh7vlXaQa+X1UXwKxgHokB2XPxbX+AnijwIU4ahazAAAAAElFTkSuQmCC",
-    ),
+    image: text("image").default("https://public.blob.vercel-storage.com/eEZHAoPTOBSYGBE3/hxfcV5V-eInX3jbVUhjAt1suB7zB88uGd1j20b.png"),
+    imageBlurhash: text("imageBlurhash").default("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAhCAYAAACbffiEAAAACXBIWXMAABYlAAAWJQFJUiTwAAABfUlEQVR4nN3XyZLDIAwE0Pz/v3q3r55JDlSBplsIEI49h76k4opexCK/juP4eXjOT149f2Tf9ySPgcjCc7kdpBTgDPKByKK2bTPFEdMO0RDrusJ0wLRBGCIuelmWJAjkgPGDSIQEMBDCfA2CEPM80+Qwl0JkNxBimiaYGOTUlXYI60YoehzHJDEm7kxjV3whOQTD3AaCuhGKHoYhyb+CBMwjIAFz647kTqyapdV4enGINuDJMSScPmijSwjCaHeLcT77C7EC0C1ugaCTi2HYfAZANgj6Z9A8xY5eiYghDMNQBJNCWhASot0jGsSCUiHWZcSGQjaWWCDaGMOWnsCcn2QhVkRuxqqNxMSdUSElCDbp1hbNOsa6Ugxh7xXauF4DyM1m5BLtCylBXgaxvPXVwEoOBjeIFVODtW74oj1yBQah3E8tyz3SkpolKS9Geo9YMD1QJR1Go4oJkgO1pgbNZq0AOUPChyjvh7vlXaQa+X1UXwKxgHokB2XPxbX+AnijwIU4ahazAAAAAElFTkSuQmCC"),
     subdomain: text("subdomain").unique(),
     customDomain: text("customDomain").unique(),
-    message404: text("message404").default(
-      "Blimey! You''ve found a page that doesn''t exist.",
-    ),
+    message404: text("message404").default("Blimey! You''ve found a page that doesn''t exist."),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { mode: "date" })
-      .notNull()
-      .$onUpdate(() => new Date()),
-    userId: text("userId").references(() => users.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().$onUpdate(() => new Date()),
+    userId: text("userId").references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   },
-  (table) => {
-    return {
-      userIdIdx: index().on(table.userId),
-    };
-  },
+  (table) => ({ userIdIdx: index().on(table.userId) }),
 );
 
 export const posts = pgTable(
   "posts",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => createId()),
+    id: text("id").primaryKey().$defaultFn(() => createId()),
     title: text("title"),
     description: text("description"),
     content: text("content"),
-    slug: text("slug")
-      .notNull()
-      .$defaultFn(() => createId()),
-    image: text("image").default(
-      "https://public.blob.vercel-storage.com/eEZHAoPTOBSYGBE3/hxfcV5V-eInX3jbVUhjAt1suB7zB88uGd1j20b.png",
-    ),
-    imageBlurhash: text("imageBlurhash").default(
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAhCAYAAACbffiEAAAACXBIWXMAABYlAAAWJQFJUiTwAAABfUlEQVR4nN3XyZLDIAwE0Pz/v3q3r55JDlSBplsIEI49h76k4opexCK/juP4eXjOT149f2Tf9ySPgcjCc7kdpBTgDPKByKK2bTPFEdMO0RDrusJ0wLRBGCIuelmWJAjkgPGDSIQEMBDCfA2CEPM80+Qwl0JkNxBimiaYGOTUlXYI60YoehzHJDEm7kxjV3whOQTD3AaCuhGKHoYhyb+CBMwjIAFz647kTqyapdV4enGINuDJMSScPmijSwjCaHeLcT77C7EC0C1ugaCTi2HYfAZANgj6Z9A8xY5eiYghDMNQBJNCWhASot0jGsSCUiHWZcSGQjaWWCDaGMOWnsCcn2QhVkRuxqqNxMSdUSElCDbp1hbNOsa6Ugxh7xXauF4DyM1m5BLtCylBXgaxvPXVwEoOBjeIFVODtW74oj1yBQah3E8tyz3SkpolKS9Geo9YMD1QJR1Go4oJkgO1pgbNZq0AOUPChyjvh7vlXaQa+X1UXwKxgHokB2XPxbX+AnijwIU4ahazAAAAAElFTkSuQmCC",
-    ),
+    slug: text("slug").notNull().$defaultFn(() => createId()),
+    image: text("image").default("https://public.blob.vercel-storage.com/eEZHAoPTOBSYGBE3/hxfcV5V-eInX3jbVUhjAt1suB7zB88uGd1j20b.png"),
+    imageBlurhash: text("imageBlurhash").default("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAhCAYAAACbffiEAAAACXBIWXMAABYlAAAWJQFJUiTwAAABfUlEQVR4nN3XyZLDIAwE0Pz/v3q3r55JDlSBplsIEI49h76k4opexCK/juP4eXjOT149f2Tf9ySPgcjCc7kdpBTgDPKByKK2bTPFEdMO0RDrusJ0wLRBGCIuelmWJAjkgPGDSIQEMBDCfA2CEPM80+Qwl0JkNxBimiaYGOTUlXYI60YoehzHJDEm7kxjV3whOQTD3AaCuhGKHoYhyb+CBMwjIAFz647kTqyapdV4enGINuDJMSScPmijSwjCaHeLcT77C7EC0C1ugaCTi2HYfAZANgj6Z9A8xY5eiYghDMNQBJNCWhASot0jGsSCUiHWZcSGQjaWWCDaGMOWnsCcn2QhVkRuxqqNxMSdUSElCDbp1hbNOsa6Ugxh7xXauF4DyM1m5BLtCylBXgaxvPXVwEoOBjeIFVODtW74oj1yBQah3E8tyz3SkpolKS9Geo9YMD1QJR1Go4oJkgO1pgbNZq0AOUPChyjvh7vlXaQa+X1UXwKxgHokB2XPxbX+AnijwIU4ahazAAAAAElFTkSuQmCC"),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { mode: "date" })
-      .notNull()
-      .$onUpdate(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().$onUpdate(() => new Date()),
     published: boolean("published").default(false).notNull(),
-    siteId: text("siteId").references(() => sites.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-    userId: text("userId").references(() => users.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
+    siteId: text("siteId").references(() => sites.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    userId: text("userId").references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   },
-  (table) => {
-    return {
-      siteIdIdx: index().on(table.siteId),
-      userIdIdx: index().on(table.userId),
-      slugSiteIdKey: uniqueIndex().on(table.slug, table.siteId),
-    };
-  },
+  (table) => ({
+    siteIdIdx: index().on(table.siteId),
+    userIdIdx: index().on(table.userId),
+    slugSiteIdKey: uniqueIndex().on(table.slug, table.siteId),
+  }),
 );
 
 export const postsRelations = relations(posts, ({ one }) => ({
