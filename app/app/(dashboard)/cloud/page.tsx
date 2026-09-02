@@ -12,6 +12,13 @@ interface Project {
   deployments: Array<{ id: string; status: string; url: string | null }>;
 }
 
+async function fetchProjects() {
+  const response = await fetch("/api/cloud/projects", { cache: "no-store" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error ?? "Unable to load projects");
+  return (data.projects ?? []) as Project[];
+}
+
 export default function CloudPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [name, setName] = useState("");
@@ -20,41 +27,34 @@ export default function CloudPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function loadProjects() {
-    const response = await fetch("/api/cloud/projects", { cache: "no-store" });
-    const data = await response.json();
-    if (response.ok) setProjects(data.projects ?? []);
-  }
-
-  async function refreshDeployments(currentProjects: Project[]) {
-    await Promise.all(
-      currentProjects.flatMap((project) => {
-        const latest = project.deployments?.[0];
-        if (!latest?.id || ["running", "failed", "cancelled"].includes(latest.status)) return [];
-        return [fetch(`/api/cloud/deployments/${latest.id}`, { cache: "no-store" }).catch(() => null)];
-      }),
-    );
-    await loadProjects();
-  }
-
   useEffect(() => {
     let active = true;
-    const boot = async () => {
-      const response = await fetch("/api/cloud/projects", { cache: "no-store" });
-      const data = await response.json();
-      if (active && response.ok) setProjects(data.projects ?? []);
+
+    const refresh = async () => {
+      try {
+        const current = await fetchProjects();
+        if (!active) return;
+        setProjects(current);
+
+        const pending = current.flatMap((project) => {
+          const latest = project.deployments?.[0];
+          if (!latest?.id || ["running", "failed", "cancelled"].includes(latest.status)) return [];
+          return [fetch(`/api/cloud/deployments/${latest.id}`, { cache: "no-store" }).catch(() => null)];
+        });
+        await Promise.all(pending);
+        if (active && pending.length) setProjects(await fetchProjects());
+      } catch {
+        // Keep the last known dashboard state during transient API failures.
+      }
     };
-    void boot();
-    const timer = setInterval(() => {
-      if (active) void refreshDeployments(projects);
-    }, 8000);
+
+    void refresh();
+    const timer = setInterval(() => void refresh(), 8000);
     return () => {
       active = false;
       clearInterval(timer);
     };
-    // Polling is intentionally low-frequency for the MVP control plane.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects.length]);
+  }, []);
 
   async function deploy(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,7 +72,7 @@ export default function CloudPage() {
       setName("");
       setRepositoryUrl("");
       setBranch("main");
-      await loadProjects();
+      setProjects(await fetchProjects());
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Deployment failed");
     } finally {
@@ -86,9 +86,7 @@ export default function CloudPage() {
         <header>
           <p className="text-sm font-medium uppercase tracking-widest opacity-60">Developer Cloud</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight">Ship without managing servers.</h1>
-          <p className="mt-3 max-w-2xl text-sm opacity-70">
-            MVP control plane backed by Coolify. Connect a Git repository and create a production deployment.
-          </p>
+          <p className="mt-3 max-w-2xl text-sm opacity-70">MVP control plane backed by Coolify. Connect a Git repository and create a production deployment.</p>
         </header>
 
         <section className="rounded-2xl border border-black/10 p-6 shadow-sm dark:border-white/10">
@@ -105,9 +103,7 @@ export default function CloudPage() {
             <input className="rounded-xl border bg-transparent px-4 py-3 md:col-span-2" value={repositoryUrl} onChange={(e) => setRepositoryUrl(e.target.value)} placeholder="https://github.com/owner/repository" type="url" required />
             <input className="rounded-xl border bg-transparent px-4 py-3" value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="main" />
             <div className="flex items-center gap-3 md:col-span-2">
-              <button disabled={loading} className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">
-                {loading ? "Deploying…" : "Deploy project"}
-              </button>
+              <button disabled={loading} className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">{loading ? "Deploying…" : "Deploy project"}</button>
               {message ? <span className="text-sm opacity-70">{message}</span> : null}
             </div>
           </form>
