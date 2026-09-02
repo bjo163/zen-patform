@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { ArrowUpRight, Cloud, ExternalLink, GitBranch, Layers3, Plus, RefreshCw, Server } from "lucide-react";
+import { Button, Card, EmptyState, Field, Input, StatusBadge } from "@/components/ui";
 
 interface Project {
   id: string;
@@ -25,129 +27,180 @@ export default function CloudPage() {
   const [repositoryUrl, setRepositoryUrl] = useState("");
   const [branch, setBranch] = useState("main");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  async function refreshProjects() {
+    const current = await fetchProjects();
+    setProjects(current);
+  }
 
   useEffect(() => {
     let active = true;
-
     const refresh = async () => {
       try {
         const current = await fetchProjects();
         if (!active) return;
         setProjects(current);
-
-        const pending = current.flatMap((project) => {
-          const latest = project.deployments?.[0];
-          if (!latest?.id || ["running", "failed", "cancelled"].includes(latest.status)) return [];
-          return [fetch(`/api/cloud/deployments/${latest.id}`, { cache: "no-store" }).catch(() => null)];
-        });
-        await Promise.all(pending);
-        if (active && pending.length) setProjects(await fetchProjects());
       } catch {
-        // Keep the last known dashboard state during transient API failures.
+        // Preserve the last known state on transient polling failures.
       }
     };
 
     void refresh();
-    const timer = setInterval(() => void refresh(), 8000);
+    const timer = setInterval(() => void refresh(), 10000);
     return () => {
       active = false;
       clearInterval(timer);
     };
   }, []);
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await refreshProjects();
+    } catch (error) {
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to refresh projects" });
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function deploy(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
-    setMessage("");
+    setMessage(null);
     try {
       const response = await fetch("/api/cloud/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, repositoryUrl, branch }),
+        body: JSON.stringify({ name, repositoryUrl, branch: branch || "main" }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Deployment failed");
-      setMessage(`Deployment queued${data.deployment?.url ? `: ${data.deployment.url}` : "."}`);
+      setMessage({ type: "success", text: data.deployment?.url ? `Deployment created: ${data.deployment.url}` : "Deployment created and queued." });
       setName("");
       setRepositoryUrl("");
       setBranch("main");
-      setProjects(await fetchProjects());
+      await refreshProjects();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Deployment failed");
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Deployment failed" });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-white p-8 text-black dark:bg-black dark:text-white sm:p-12">
-      <div className="mx-auto max-w-6xl space-y-10">
-        <header>
-          <p className="text-sm font-medium uppercase tracking-widest opacity-60">Developer Cloud</p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight">Ship without managing servers.</h1>
-          <p className="mt-3 max-w-2xl text-sm opacity-70">MVP control plane backed by Coolify. Connect a Git repository and create a production deployment.</p>
+    <main className="min-h-screen bg-white text-stone-950 dark:bg-black dark:text-white">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
+        <header className="flex flex-col gap-6 border-b border-stone-200 pb-8 dark:border-stone-800 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+              <Cloud className="h-4 w-4" aria-hidden="true" />
+              Developer Cloud
+            </div>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Ship without managing servers.</h1>
+            <p className="mt-3 text-sm leading-6 text-stone-500 dark:text-stone-400">Connect a repository, deploy through Coolify, and manage the lifecycle from one control plane.</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => void handleRefresh()} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+            Refresh
+          </Button>
         </header>
 
-        <section className="rounded-2xl border border-black/10 p-6 shadow-sm dark:border-white/10">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">New project</h2>
-              <p className="text-sm opacity-60">GitHub/GitLab public repository for the first MVP.</p>
+        <div className="grid gap-8 py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,.65fr)]">
+          <Card className="overflow-hidden">
+            <div className="border-b border-stone-200 p-6 dark:border-stone-800 sm:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold"><Plus className="h-4 w-4" aria-hidden="true" /> New project</div>
+                  <p className="mt-1.5 text-sm text-stone-500 dark:text-stone-400">Public GitHub or GitLab repository for the MVP deployment path.</p>
+                </div>
+                <span className="rounded-full border border-stone-200 px-2.5 py-1 text-[11px] font-semibold text-stone-600 dark:border-stone-700 dark:text-stone-300">Coolify</span>
+              </div>
             </div>
-            <span className="rounded-full border px-3 py-1 text-xs">Coolify</span>
-          </div>
+            <form onSubmit={deploy} className="grid gap-5 p-6 sm:p-7">
+              <Field label="Project name" hint="A short human-readable name." required>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="my-app" required autoComplete="off" />
+              </Field>
+              <Field label="Repository URL" hint="For example: https://github.com/owner/repository" required>
+                <Input value={repositoryUrl} onChange={(e) => setRepositoryUrl(e.target.value)} placeholder="https://github.com/owner/repository" type="url" required />
+              </Field>
+              <Field label="Branch" hint="The branch to deploy. Defaults to main.">
+                <Input value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="main" />
+              </Field>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button type="submit" disabled={loading}>
+                  <Server className="h-4 w-4" aria-hidden="true" />
+                  {loading ? "Deploying…" : "Deploy project"}
+                </Button>
+                {message ? (
+                  <p role="status" aria-live="polite" className={`text-sm ${message.type === "error" ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                    {message.text}
+                  </p>
+                ) : null}
+              </div>
+            </form>
+          </Card>
 
-          <form onSubmit={deploy} className="grid gap-4 md:grid-cols-3">
-            <input className="rounded-xl border bg-transparent px-4 py-3" value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name" required />
-            <input className="rounded-xl border bg-transparent px-4 py-3 md:col-span-2" value={repositoryUrl} onChange={(e) => setRepositoryUrl(e.target.value)} placeholder="https://github.com/owner/repository" type="url" required />
-            <input className="rounded-xl border bg-transparent px-4 py-3" value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="main" />
-            <div className="flex items-center gap-3 md:col-span-2">
-              <button disabled={loading} className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">{loading ? "Deploying…" : "Deploy project"}</button>
-              {message ? <span className="text-sm opacity-70">{message}</span> : null}
+          <Card className="p-6 sm:p-7">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Launch plan</div>
+            <div className="mt-4 text-3xl font-bold tracking-tight">Rp49k<span className="text-sm font-normal text-stone-500"> / bulan</span></div>
+            <p className="mt-2 text-sm leading-6 text-stone-500 dark:text-stone-400">Starter offer for early customers while billing integration is being connected.</p>
+            <div className="mt-6 grid gap-3 border-t border-stone-200 pt-5 text-sm dark:border-stone-800">
+              <div className="flex items-center justify-between"><span className="text-stone-500">Projects</span><span className="font-medium">1</span></div>
+              <div className="flex items-center justify-between"><span className="text-stone-500">RAM</span><span className="font-medium">512 MB</span></div>
+              <div className="flex items-center justify-between"><span className="text-stone-500">Storage</span><span className="font-medium">5 GB</span></div>
             </div>
-          </form>
-        </section>
-
-        <section className="rounded-2xl border border-black/10 p-6 dark:border-white/10">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest opacity-50">Start selling</p>
-              <h2 className="text-2xl font-bold">Launch plan</h2>
-              <p className="mt-1 text-sm opacity-60">Simple starter offer for early customers. Billing hooks are ready to connect next.</p>
-            </div>
-            <div className="text-left sm:text-right">
-              <div className="text-2xl font-bold">Rp49k<span className="text-sm font-normal opacity-50"> / bulan</span></div>
-              <div className="text-xs opacity-50">1 project · 512 MB RAM · 5 GB storage</div>
-            </div>
-          </div>
-        </section>
+          </Card>
+        </div>
 
         <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Projects</h2>
-            <span className="text-sm opacity-50">{projects.length} total</span>
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Workspace</div>
+              <h2 className="mt-1.5 text-xl font-bold tracking-tight">Projects</h2>
+            </div>
+            <span className="text-sm text-stone-500">{projects.length} total</span>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => {
-              const latest = project.deployments?.[0];
-              return (
-                <article key={project.id} className="rounded-2xl border border-black/10 p-5 dark:border-white/10">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold">{project.name}</h3>
-                      <p className="mt-1 truncate text-xs opacity-50">{project.repositoryUrl}</p>
+
+          {projects.length ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {projects.map((project) => {
+                const latest = project.deployments?.[0];
+                return (
+                  <Card key={project.id} className="group overflow-hidden transition-shadow hover:shadow-md">
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <h3 className="truncate font-semibold">{project.name}</h3>
+                          <p className="mt-1 truncate text-xs text-stone-500">{project.repositoryUrl ?? "No repository"}</p>
+                        </div>
+                        <StatusBadge status={latest?.status ?? "new"} />
+                      </div>
+                      <div className="mt-5 grid gap-2 text-xs text-stone-500">
+                        <div className="flex items-center gap-2"><GitBranch className="h-3.5 w-3.5" aria-hidden="true" />{project.defaultBranch}</div>
+                        <div className="flex items-center gap-2"><Layers3 className="h-3.5 w-3.5" aria-hidden="true" />Provider: {project.provider}</div>
+                      </div>
                     </div>
-                    <span className="rounded-full border px-2 py-1 text-[11px]">{latest?.status ?? "new"}</span>
-                  </div>
-                  <div className="mt-5 text-xs opacity-60">{project.defaultBranch} · {project.provider}</div>
-                  {latest?.url ? <a href={latest.url} target="_blank" rel="noreferrer" className="mt-3 block truncate text-sm underline">{latest.url}</a> : null}
-                  <Link href={`/cloud/${project.id}`} className="mt-4 inline-block text-sm font-medium underline">Open project →</Link>
-                </article>
-              );
-            })}
-            {!projects.length ? <div className="rounded-2xl border border-dashed p-8 text-sm opacity-60">No projects yet. Deploy the first one above.</div> : null}
-          </div>
+                    <div className="flex items-center justify-between border-t border-stone-200 bg-stone-50 px-5 py-3 dark:border-stone-800 dark:bg-stone-950">
+                      {latest?.url ? (
+                        <a href={latest.url} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-stone-700 hover:underline dark:text-stone-300">
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          <span className="truncate">Live deployment</span>
+                        </a>
+                      ) : <span className="text-xs text-stone-500">No deployment URL yet</span>}
+                      <Link href={`/cloud/${project.id}`} className="inline-flex items-center gap-1 text-xs font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400">
+                        Open <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState title="No projects yet" description="Create your first project above and it will appear here with its latest deployment status." />
+          )}
         </section>
       </div>
     </main>
