@@ -4,24 +4,20 @@ import * as legacySchema from "./schema";
 import * as cloudSchema from "./cloud/schema";
 
 const schema = { ...legacySchema, ...cloudSchema };
-const isProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
 const runtimeConnectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
-// Keep the Drizzle client shape identical in build and runtime so TypeScript
-// preserves db.query.* for every schema table. The build-time placeholder is
-// only used to construct the lazy postgres client; no database query should
-// run during static generation.
+// Vercel can build the app without the runtime database configured yet. Keep
+// the Drizzle client constructible so public pages can render and handle their
+// database calls explicitly instead of crashing during module initialization.
+// Production database access still requires DATABASE_URL or POSTGRES_URL.
 const connectionString =
-  runtimeConnectionString || (isProductionBuild ? "postgresql://build:build@localhost:5432/build" : undefined);
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL or POSTGRES_URL is required");
-}
+  runtimeConnectionString || "postgresql://build:build@127.0.0.1:5432/build";
 
 const client = postgres(connectionString, {
-  ssl: process.env.NODE_ENV === "production" ? "require" : undefined,
+  ssl: process.env.NODE_ENV === "production" && runtimeConnectionString ? "require" : undefined,
   max: 5,
   prepare: false,
+  connect_timeout: 5,
 });
 
 export const db = drizzle(client, { schema, logger: true });
