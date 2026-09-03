@@ -5,6 +5,11 @@ import { Providers } from "./providers";
 import { Metadata } from "next";
 import { cn } from "@/lib/utils";
 
+// Zen Platform pages depend on runtime database/auth state. Keep the app
+// dynamic so Next.js does not try to prerender database-backed pages during
+// the production build.
+export const dynamic = "force-dynamic";
+
 const title = "Zen Platform — Developer Cloud";
 const description =
   "Zen Platform is a developer cloud control plane for deploying and managing modern applications.";
