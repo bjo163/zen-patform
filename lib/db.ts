@@ -4,31 +4,27 @@ import * as legacySchema from "./schema";
 import * as cloudSchema from "./cloud/schema";
 
 const schema = { ...legacySchema, ...cloudSchema };
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 const isProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
+const runtimeConnectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
-if (!connectionString && !isProductionBuild) {
+// Keep the Drizzle client shape identical in build and runtime so TypeScript
+// preserves db.query.* for every schema table. The build-time placeholder is
+// only used to construct the lazy postgres client; no database query should
+// run during static generation.
+const connectionString =
+  runtimeConnectionString || (isProductionBuild ? "postgresql://build:build@localhost:5432/build" : undefined);
+
+if (!connectionString) {
   throw new Error("DATABASE_URL or POSTGRES_URL is required");
 }
 
-// Next.js evaluates route modules during the production build. Keep database
-// initialization out of that phase so a missing runtime secret cannot break
-// page-data collection. The real connection is still required at runtime.
-const client = connectionString
-  ? postgres(connectionString, {
-      ssl: process.env.NODE_ENV === "production" ? "require" : undefined,
-      max: 5,
-      prepare: false,
-    })
-  : null;
+const client = postgres(connectionString, {
+  ssl: process.env.NODE_ENV === "production" ? "require" : undefined,
+  max: 5,
+  prepare: false,
+});
 
-export const db = client
-  ? drizzle(client, { schema, logger: true })
-  : (new Proxy({}, {
-      get() {
-        throw new Error("DATABASE_URL or POSTGRES_URL is required at runtime");
-      },
-    }) as ReturnType<typeof drizzle>);
+export const db = drizzle(client, { schema, logger: true });
 
 export type DrizzleClient = typeof db;
 export default db;
