@@ -5,30 +5,13 @@ import { placeholderBlurhash, toDateString } from "@/lib/utils";
 import BlogCard from "@/components/blog-card";
 import { getPostsForSite, getSiteData } from "@/lib/fetchers";
 import Image from "next/image";
-import db from "@/lib/db";
 
 export async function generateStaticParams() {
-  const allSites = await db.query.sites.findMany({
-    // feel free to remove this filter if you want to generate paths for all sites
-    where: (sites, { eq }) => eq(sites.subdomain, "demo"),
-    columns: {
-      subdomain: true,
-      customDomain: true,
-    },
-  });
-
-  const allPaths = allSites
-    .flatMap(({ subdomain, customDomain }) => [
-      subdomain && {
-        domain: `${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
-      },
-      customDomain && {
-        domain: customDomain,
-      },
-    ])
-    .filter(Boolean);
-
-  return allPaths;
+  // Do not query the database during the production build. The DB client is
+  // intentionally unavailable when NEXT_PHASE=phase-production-build, and
+  // the domain route can still be resolved dynamically at runtime.
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+  return rootDomain ? [{ domain: `demo.${rootDomain}` }] : [];
 }
 
 export default async function SiteHomePage({
@@ -50,7 +33,7 @@ export default async function SiteHomePage({
     <>
       <div className="mb-20 w-full">
         {posts.length > 0 ? (
-          <div className="mx-auto w-full max-w-screen-xl md:mb-28 lg:w-5/6">
+          <div className="mx-auto w-full max-w-screen-xl md:mb-28 lg:w-5/6 lg:rounded-xl">
             <Link href={`/${posts[0].slug}`}>
               <div className="group relative mx-auto h-80 w-full overflow-hidden sm:h-150 lg:rounded-xl">
                 <BlurImage
