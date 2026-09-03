@@ -4,9 +4,6 @@ import BlogCard from "@/components/blog-card";
 import BlurImage from "@/components/blur-image";
 import MDX from "@/components/mdx";
 import { placeholderBlurhash, toDateString } from "@/lib/utils";
-import db from "@/lib/db";
-import { posts, sites } from "@/lib/schema";
-import { eq } from "drizzle-orm";
 
 export async function generateMetadata({
   params,
@@ -49,32 +46,9 @@ export async function generateMetadata({
 }
 
 export async function generateStaticParams() {
-  const allPosts = await db
-    .select({
-      slug: posts.slug,
-      site: {
-        subdomain: sites.subdomain,
-        customDomain: sites.customDomain,
-      },
-    })
-    .from(posts)
-    .leftJoin(sites, eq(posts.siteId, sites.id))
-    .where(eq(sites.subdomain, "demo")); // feel free to remove this filter if you want to generate paths for all posts
-
-  const allPaths = allPosts
-    .flatMap(({ site, slug }) => [
-      site?.subdomain && {
-        domain: `${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
-        slug,
-      },
-      site?.customDomain && {
-        domain: site.customDomain,
-        slug,
-      },
-    ])
-    .filter(Boolean);
-
-  return allPaths;
+  // Do not query Postgres during the production build.
+  // Posts are resolved dynamically at runtime through getPostData().
+  return [];
 }
 
 export default async function SitePostPage({
@@ -105,7 +79,6 @@ export default async function SitePostPage({
           </p>
         </div>
         <a
-          // if you are using Github OAuth, you can get rid of the Twitter option
           href={
             data.site?.user?.username
               ? `https://twitter.com/${data.site.user.username}`
@@ -165,7 +138,7 @@ export default async function SitePostPage({
         </div>
       )}
       {data.adjacentPosts && (
-        <div className="mx-5 mb-20 grid max-w-screen-xl grid-cols-1 gap-x-4 gap-y-8 md:grid-cols-2 xl:mx-auto xl:grid-cols-3">
+        <div className="mx-5 mb-20 grid max-w-screen-xl grid-cols-1 gap-x-4 gap-y-8 md:grid-cols-2 xl:grid-cols-3">
           {data.adjacentPosts.map((data: any, index: number) => (
             <BlogCard key={index} data={data} />
           ))}
