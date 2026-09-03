@@ -15,6 +15,13 @@ export default async function middleware(req: NextRequest) {
   const searchParams = url.searchParams.toString();
   const path = `${url.pathname}${searchParams ? `?${searchParams}` : ""}`;
 
+  // Authentication endpoints and the public login page must never be treated
+  // as tenant custom-domain routes. This also makes login resilient when the
+  // root-domain environment variable is not configured in Vercel yet.
+  if (url.pathname === "/login" || url.pathname.startsWith("/api/auth/")) {
+    return NextResponse.next();
+  }
+
   const isVercelProjectHost =
     hostname === "zen-patform.vercel.app" ||
     hostname === "zen-patform-bjo163s-projects.vercel.app" ||
@@ -23,8 +30,6 @@ export default async function middleware(req: NextRequest) {
       hostname.endsWith("-bjo163s-projects.vercel.app"));
 
   // The Vercel project domain owns the public application routes.
-  // Let Next.js resolve / and /home normally; do not rewrite them into
-  // the multi-tenant [domain]/[slug] route tree.
   if (isVercelProjectHost || hostname === rootDomain) {
     return NextResponse.next();
   }
