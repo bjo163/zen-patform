@@ -8,7 +8,15 @@ import { eq } from "drizzle-orm";
 import { getSupabaseClaims } from "./supabase/server";
 
 const VERCEL_DEPLOYMENT = !!process.env.VERCEL_URL;
+// Prefer a dedicated NextAuth secret. AUTH_SECRET is supported as the
+// standard Auth.js-compatible alias. The GitHub client secret is only a
+// bootstrap fallback for existing deployments that have not yet provisioned
+// NEXTAUTH_SECRET; it is never sent to the browser.
+const NEXTAUTH_SECRET =
+  process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || process.env.AUTH_GITHUB_SECRET;
+
 export const authOptions: NextAuthOptions = {
+  secret: NEXTAUTH_SECRET,
   providers: [
     GitHubProvider({
       clientId: process.env.AUTH_GITHUB_ID as string,
@@ -43,7 +51,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        domain: VERCEL_DEPLOYMENT
+        domain: VERCEL_DEPLOYMENT && process.env.NEXT_PUBLIC_ROOT_DOMAIN
           ? `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
           : undefined,
         secure: VERCEL_DEPLOYMENT,
